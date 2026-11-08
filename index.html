@@ -76,7 +76,7 @@ button.th{cursor:pointer}
 </style>
 </head>
 <body>
-<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v5)</p></main>
+<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v6)</p></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
 <dialog id="pk"></dialog>
@@ -85,8 +85,9 @@ button.th{cursor:pointer}
 (function(){function show(m){var a=document.getElementById('app');if(a&&(!a.innerHTML.trim()||a.querySelector('[data-boot]')))a.innerHTML='<div style="padding:8px"><h2 style="font-family:serif;font-size:30px">Ada masalah</h2><p style="color:#c0392b;word-break:break-word;margin:10px 0">'+String(m).replace(/</g,'&lt;')+'</p><p>Muat ulang dengan Ctrl+Shift+R. Kalau masih sama, kirim tulisan merah ini ke Claude.</p></div>'}
 window.addEventListener('error',function(e){show((e.error&&e.error.message)||e.message)});
 window.addEventListener('unhandledrejection',function(e){show((e.reason&&e.reason.message)||e.reason)});
-setTimeout(function(){show('Aplikasi tidak bisa memulai (v5). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
+setTimeout(function(){show('Aplikasi tidak bisa memulai (v6). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
 </script>
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.78.0/dist/umd/supabase.min.js"></script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.78.0/dist/umd/supabase.js"><\/script>')</script>
 <script>
@@ -96,9 +97,9 @@ const KEY='flawarist-v1';
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 S=S||{bahan:[],produk:[],trx:[]};
-/* === ISI DUA BARIS INI dari Supabase: Project Settings → API === */
-const SUPABASE_URL='https://puunerjvystauuygrusk.supabase.co/rest/v1/';
-const SUPABASE_ANON_KEY='sb_publishable_bqrjpN_XALKzDDEsCwdnMA_uEJmw3hE';
+/* Kunci Supabase diisi di file config.js, bukan di sini */
+const SUPABASE_URL=(window.AKASIA_CONFIG||{}).url||'';
+const SUPABASE_ANON_KEY=(window.AKASIA_CONFIG||{}).key||'';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
  if(user){clearTimeout(timer);timer=setTimeout(push,600)}};
 let view='dash',tab='semua',draft;
