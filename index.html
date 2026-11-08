@@ -76,7 +76,7 @@ button.th{cursor:pointer}
 </style>
 </head>
 <body>
-<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v9)</p></main>
+<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v10)</p></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
 <dialog id="pk"></dialog>
@@ -85,7 +85,7 @@ button.th{cursor:pointer}
 (function(){function show(m){var a=document.getElementById('app');if(a&&(!a.innerHTML.trim()||a.querySelector('[data-boot]')))a.innerHTML='<div style="padding:8px"><h2 style="font-family:serif;font-size:30px">Ada masalah</h2><p style="color:#c0392b;word-break:break-word;margin:10px 0">'+String(m).replace(/</g,'&lt;')+'</p><p>Muat ulang dengan Ctrl+Shift+R. Kalau masih sama, kirim tulisan merah ini ke Claude.</p></div>'}
 window.addEventListener('error',function(e){show((e.error&&e.error.message)||e.message)});
 window.addEventListener('unhandledrejection',function(e){show((e.reason&&e.reason.message)||e.reason)});
-setTimeout(function(){show('Aplikasi tidak bisa memulai (v9). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
+setTimeout(function(){show('Aplikasi tidak bisa memulai (v10). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.78.0/dist/umd/supabase.min.js"></script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.78.0/dist/umd/supabase.js"><\/script>')</script>
@@ -154,7 +154,8 @@ function dash(){const t=totals(),up=upcoming();
  <div class="row" style="padding:22px 20px;cursor:pointer" onclick="openKal()"><div><b class="serif" style="font-size:24px">📅 Kalender Penting</b>${up.slice(0,2).map(a=>`<small>${esc(a.e.nama)} • ${lbl(a.o.hari)} (${a.o.x.getDate()} ${BLN[a.o.x.getMonth()]})</small>`).join('')||'<small>Belum ada tanggal. Ketuk untuk menambah.</small>'}</div><span style="color:var(--rose);font-size:24px">›</span></div>
  <div class="bar" style="margin-top:22px"><button class="btn p big2" onclick="go('hpp')">🧮 Hitung HPP<span>Buat / lihat template produk</span></button>
  <button class="btn big2" onclick="go('trx')">💰 Catat Transaksi<span>Pemasukan &amp; pengeluaran</span></button></div>
- <div class="bar"><button class="btn" onclick="backup()">Unduh cadangan</button><button class="btn" onclick="restore()">Pulihkan data</button>${user?'<button class="btn" onclick="logout()">Keluar</button>':''}</div>`}
+ ${user?`<div class="row" style="padding:12px 16px"><div><small style="margin:0">Masuk sebagai ${esc(user.email||'akunmu')}</small><small id="sy" class="${syncBad?'out':'in'}">☁️ ${esc(syncMsg||'Terhubung ke cloud')}</small></div><button class="btn" onclick="syncNow()">Sinkronkan</button></div>`:'<div class="row" style="padding:12px 16px"><small style="margin:0">Mode lokal: belum masuk, data hanya ada di perangkat ini.</small></div>'}
+ <div class="bar" style="margin-top:14px"><button class="btn" onclick="backup()">Unduh cadangan</button><button class="btn" onclick="restore()">Pulihkan data</button>${user?'<button class="btn" onclick="logout()">Keluar</button>':''}</div>`}
 
 /* ---------- BAHAN ---------- */
 let q='';
@@ -282,10 +283,17 @@ function backup(){const a=document.createElement('a');a.href=URL.createObjectURL
 function restore(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=async()=>{try{S=JSON.parse(await i.files[0].text());save();render()}catch(e){alert('File cadangan tidak valid')}};i.click()}
 /* ---------- LOGIN & SINKRON ---------- */
 let sb,user,timer;
-function push(){return sb.from('app_data').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()})}
-async function pull(){const{data}=await sb.from('app_data').select('data').eq('user_id',user.id).maybeSingle();
+let syncMsg='',syncBad=false;
+function setSync(m,bad){syncMsg=m;syncBad=bad;const e=document.getElementById('sy');if(e){e.textContent='☁️ '+m;e.className=bad?'out':'in'}}
+const jam=()=>new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+async function push(){try{const r=await sb.from('app_data').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()});
+  setSync(r&&r.error?'Gagal menyimpan ke cloud: '+r.error.message:'Tersimpan ke cloud '+jam(),!!(r&&r.error));return r}
+ catch(e){setSync('Gagal menyimpan ke cloud: '+e.message,true)}}
+async function syncNow(){if(!user)return;await pull();render()}
+async function pull(){const{data,error}=await sb.from('app_data').select('data').eq('user_id',user.id).maybeSingle();
+ if(error){setSync('Gagal mengambil data: '+error.message,true);return}
  if(data&&data.data){S=Object.assign({bahan:[],produk:[],trx:[]},data.data);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
- else if(S.bahan.length||S.produk.length||S.trx.length)await push()}
+ else if(S.bahan.length||S.produk.length||S.trx.length)await push();if(!syncBad)setSync('Data terbaru dimuat '+jam(),false)}
 function authView(msg){$('#nav').innerHTML='';
  $('#app').innerHTML=`<div class="view"><div class="sub">Selamat datang ✨</div><h1>akasia.flo</h1>
  <label>Email</label><input id="a1" type="email" autocomplete="email">
@@ -309,6 +317,9 @@ window.addEventListener('unhandledrejection',ev=>showErr(ev.reason));
  sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
  const{data}=await sb.auth.getSession();
  if(data.session){user=data.session.user;await pull();render();migrate()}else authView()})().catch(showErr);
+document.addEventListener('visibilitychange',()=>{if(!user)return;
+ if(document.visibilityState==='hidden'&&timer){clearTimeout(timer);timer=0;push()}
+ else if(document.visibilityState==='visible'&&!dlg.open&&!$('#pk').open)syncNow()});
 </script>
 </body>
 </html>
