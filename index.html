@@ -76,7 +76,7 @@ button.th{cursor:pointer}
 </style>
 </head>
 <body>
-<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v7)</p></main>
+<main id="app"><p data-boot class="sub" style="text-align:center;margin-top:30vh">Memuat akasia.flo… (v9)</p></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
 <dialog id="pk"></dialog>
@@ -85,7 +85,7 @@ button.th{cursor:pointer}
 (function(){function show(m){var a=document.getElementById('app');if(a&&(!a.innerHTML.trim()||a.querySelector('[data-boot]')))a.innerHTML='<div style="padding:8px"><h2 style="font-family:serif;font-size:30px">Ada masalah</h2><p style="color:#c0392b;word-break:break-word;margin:10px 0">'+String(m).replace(/</g,'&lt;')+'</p><p>Muat ulang dengan Ctrl+Shift+R. Kalau masih sama, kirim tulisan merah ini ke Claude.</p></div>'}
 window.addEventListener('error',function(e){show((e.error&&e.error.message)||e.message)});
 window.addEventListener('unhandledrejection',function(e){show((e.reason&&e.reason.message)||e.reason)});
-setTimeout(function(){show('Aplikasi tidak bisa memulai (v7). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
+setTimeout(function(){show('Aplikasi tidak bisa memulai (v9). Mungkin library Supabase atau kunci di index.html bermasalah.')},7000)})();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.78.0/dist/umd/supabase.min.js"></script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.78.0/dist/umd/supabase.js"><\/script>')</script>
@@ -107,11 +107,32 @@ const $=s=>document.querySelector(s),dlg=$('#dlg');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const HARI=[[1,1,'Tahun Baru'],[14,2,'Valentine'],[8,3,'Hari Perempuan'],[21,4,'Hari Kartini'],[12,5,'Hari Ibu Sedunia'],[25,11,'Hari Guru'],[22,12,'Hari Ibu']];
-function nextHari(){const n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());
- let best;for(const[d,m,nm]of HARI){let x=new Date(t.getFullYear(),m-1,d);if(x<t)x=new Date(t.getFullYear()+1,m-1,d);
-  if(!best||x<best.x)best={x,nm,d,m}}
- const bln=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
- return{nm:best.nm,hari:Math.round((best.x-t)/864e5),tgl:best.d+' '+bln[best.m-1]}}
+const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const pd=t=>{const[y,m,d]=t.split('-').map(Number);return new Date(y,m-1,d)};
+const fmtL=x=>x.getDate()+' '+BLN[x.getMonth()]+' '+x.getFullYear();
+const lbl=n=>n===0?'Hari ini':n===1?'Besok':n+' hari lagi';
+function kal(){if(!S.kalender){const y=new Date().getFullYear();S.kalender=HARI.map(([d,m,nm])=>({id:uid(),nama:nm,tgl:`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ulang:true}));save()}return S.kalender}
+function nextOcc(e){const n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());let x=pd(e.tgl);
+ if(e.ulang){x=new Date(t.getFullYear(),x.getMonth(),x.getDate());if(x<t)x=new Date(t.getFullYear()+1,x.getMonth(),x.getDate())}
+ else if(x<t)return null;
+ return{x,hari:Math.round((x-t)/864e5)}}
+const upcoming=()=>kal().map(e=>({e,o:nextOcc(e)})).filter(a=>a.o).sort((a,b)=>a.o.x-b.o.x);
+function kRow(e,o){return`<div class="item"><div>${esc(e.nama)}<br><small style="color:var(--mute)">${o?fmtL(o.x)+' • '+lbl(o.hari):fmtL(pd(e.tgl))}${e.ulang?' • setiap tahun':''}</small></div><span><button class="x" onclick="formKal('${e.id}')" aria-label="Ubah">✎</button><button class="x" onclick="delKal('${e.id}')" aria-label="Hapus">✕</button></span></div>`}
+function openKal(){const up=upcoming(),past=kal().filter(e=>!nextOcc(e));
+ dlg.innerHTML=`<h2>Kalender Penting</h2><div class="bar" style="margin:10px 0"><button class="btn p" onclick="formKal()">+ Tambah Tanggal</button></div>
+ ${up.map(a=>kRow(a.e,a.o)).join('')||'<div class="empty">Belum ada tanggal penting.</div>'}
+ ${past.length?'<h3 class="g">Sudah lewat</h3>'+past.map(e=>kRow(e)).join(''):''}
+ <div class="bar" style="margin-top:16px"><button class="btn" onclick="dlg.close();render()">Tutup</button></div>`;
+ if(!dlg.open)dlg.showModal()}
+function formKal(id){const e=kal().find(x=>x.id===id)||{nama:'',tgl:new Date().toISOString().slice(0,10),ulang:false};
+ dlg.innerHTML=`<h2>${id?'Ubah':'Tambah'} Tanggal</h2><label>Nama acara</label><input id="k1" value="${esc(e.nama)}" placeholder="Wisuda Kak Rina">
+ <label>Tanggal</label><input id="k2" type="date" value="${e.tgl}">
+ <label style="display:flex;gap:10px;align-items:center;margin-top:16px;color:var(--ink);font-size:15px"><input id="k3" type="checkbox" ${e.ulang?'checked':''} style="width:auto;padding:0"> Ulangi setiap tahun</label>
+ <div class="bar" style="margin-top:20px"><button class="btn" onclick="openKal()">Batal</button><button class="btn p" onclick="saveKal('${id||''}')">Simpan</button></div>`;
+ if(!dlg.open)dlg.showModal()}
+function saveKal(id){const nama=$('#k1').value.trim(),tgl=$('#k2').value;if(!nama)return $('#k1').focus();if(!tgl)return $('#k2').focus();
+ const o={nama,tgl,ulang:$('#k3').checked};if(id)Object.assign(S.kalender.find(x=>x.id===id),o);else S.kalender.push({id:uid(),...o});save();openKal()}
+function delKal(id){if(!confirm('Hapus tanggal ini?'))return;S.kalender=S.kalender.filter(x=>x.id!==id);save();openKal()}
 
 const hpp=p=>p.items.reduce((a,i)=>{const b=S.bahan.find(x=>x.id===i.bid);return a+(b?b.harga*i.qty:0)},0);
 const totals=()=>{const i=S.trx.filter(t=>t.jenis==='in').reduce((a,t)=>a+t.jml,0),o=S.trx.filter(t=>t.jenis==='out').reduce((a,t)=>a+t.jml,0);return{i,o,s:i-o}};
@@ -123,14 +144,14 @@ function render(){
  window.scrollTo(0,0)}
 const go=v=>{view=v;render()};
 
-function dash(){const t=totals(),h=nextHari();
+function dash(){const t=totals(),up=upcoming();
  return`<div class="sub">Selamat datang kembali ✨</div><h1>Dashboard akasia.flo</h1>
  <div class="grid">
  <div class="stat" style="background:var(--gbg)"><small>Saldo Kas 💰</small><div class="big" style="color:var(--green)">${rp(t.s)}</div></div>
  <div class="stat" style="background:var(--bbg)"><small>Total Pemasukan 📈</small><div class="big" style="color:var(--blue)">${rp(t.i)}</div></div>
  <div class="stat" style="background:var(--rbg)"><small>Total Pengeluaran 📉</small><div class="big" style="color:var(--red)">${rp(t.o)}</div></div>
  <div class="stat" style="background:#fbe9ef"><small>Template Produk 🌸</small><div class="big" style="color:var(--rose)">${S.produk.length}</div></div></div>
- <div class="row" style="padding:22px 20px"><div><b class="serif" style="font-size:24px">📅 Kalender Penting</b><small>${h.nm} • ${h.hari} hari lagi (${h.tgl})</small></div></div>
+ <div class="row" style="padding:22px 20px;cursor:pointer" onclick="openKal()"><div><b class="serif" style="font-size:24px">📅 Kalender Penting</b>${up.slice(0,2).map(a=>`<small>${esc(a.e.nama)} • ${lbl(a.o.hari)} (${a.o.x.getDate()} ${BLN[a.o.x.getMonth()]})</small>`).join('')||'<small>Belum ada tanggal. Ketuk untuk menambah.</small>'}</div><span style="color:var(--rose);font-size:24px">›</span></div>
  <div class="bar" style="margin-top:22px"><button class="btn p big2" onclick="go('hpp')">🧮 Hitung HPP<span>Buat / lihat template produk</span></button>
  <button class="btn big2" onclick="go('trx')">💰 Catat Transaksi<span>Pemasukan &amp; pengeluaran</span></button></div>
  <div class="bar"><button class="btn" onclick="backup()">Unduh cadangan</button><button class="btn" onclick="restore()">Pulihkan data</button>${user?'<button class="btn" onclick="logout()">Keluar</button>':''}</div>`}
@@ -171,13 +192,13 @@ function pickPhoto(max,q,cb){const i=document.createElement('input');i.type='fil
    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL('image/jpeg',q))};
   im.onerror=()=>alert('Foto tidak bisa dibaca, coba foto lain.');im.src=u};i.click()}
 let bph='';
-async function up(d){if(!user||!sb||!d||!d.startsWith('data:'))return d;
+async function up(d,silent){if(!user||!sb||!d||!d.startsWith('data:'))return d;
  try{const b=await(await fetch(d)).blob(),p=`${user.id}/${uid()}.jpg`;
   const r=await sb.storage.from('foto').upload(p,b,{contentType:'image/jpeg'});if(r.error)throw r.error;
   return sb.storage.from('foto').getPublicUrl(p).data.publicUrl}
- catch(e){alert('Foto belum bisa diunggah ke cloud, disimpan di perangkat dulu.');return d}}
+ catch(e){console.error('Unggah foto gagal',e);if(!silent)alert('Foto belum bisa diunggah ke cloud ('+((e&&e.message)||'tidak diketahui')+'). Disimpan di perangkat dulu.');return d}}
 function rmPhoto(u){if(!user||!sb||!u||u.startsWith('data:'))return;const i=u.indexOf('/foto/');if(i<0)return;sb.storage.from('foto').remove([decodeURIComponent(u.slice(i+6))]).catch(()=>{})}
-async function migrate(){let ch=false;for(const o of[...S.bahan,...S.produk])if(o.photo&&o.photo.startsWith('data:')){o.photo=await up(o.photo);ch=true}if(ch)save()}
+async function migrate(){let ch=false;for(const o of[...S.bahan,...S.produk])if(o.photo&&o.photo.startsWith('data:')){o.photo=await up(o.photo,true);ch=true}if(ch)save()}
 function pickB(){const e=$('#f1');pickPhoto(240,.7,async d=>{d=await up(d);bph=d;$('#bpv').innerHTML=th(d,'','lg')})}
 function photoP(){keepName();pickPhoto(560,.7,async d=>{d=await up(d);draft.photo=d;drawProduk()})}
 function openPick(fl){keepName();const pk=$('#pk');
